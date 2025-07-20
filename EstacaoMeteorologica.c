@@ -29,9 +29,9 @@
 #define BOTAO_B 6
 #define BUZZER_PIN 10
 #define WS2812_PIN 7
-#define LED_RGB_R 18
-#define LED_RGB_G 19
-#define LED_RGB_B 20
+#define LED_RGB_R 13
+#define LED_RGB_B 12
+#define LED_RGB_G 11
 
 #define NUM_PIXELS 25
 #define SEA_LEVEL_PRESSURE 101325.0
