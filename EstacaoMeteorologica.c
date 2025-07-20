@@ -144,7 +144,7 @@ const char HTML_BODY[] =
     "document.getElementById('humid-val').textContent=d.h.toFixed(1)+'%';"
     "document.getElementById('press-val').textContent=d.p.toFixed(1)+' kPa';"
     "document.getElementById('alt-val').textContent=d.a.toFixed(0)+' m';"
-    "var tempPct=Math.min(Math.max(d.t*2.5,0),100);"
+    "var tempPct=Math.min(Math.max(((d.t+40)/125)*100,0),100);" // Corrigido para -40 a +85
     "var humidPct=Math.min(Math.max(d.h,0),100);"
     "var pressPct=Math.min(Math.max((d.p-95)*10,0),100);"
     "var altPct=Math.min(Math.max(d.a/20,0),100);"
@@ -196,8 +196,6 @@ const char HTML_BODY[] =
     "</div>"
     "</div>"
     "<div class='footer'>"
-    "<p>BitDogLab - CEPEDI TIC37 EMBARCATECH</p>"
-    "<p>Atualização automática a cada 2 segundos</p>"
     "</div>"
     "</div>"
     "</body></html>";
