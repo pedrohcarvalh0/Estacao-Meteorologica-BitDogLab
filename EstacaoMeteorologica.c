@@ -163,7 +163,7 @@ const char HTML_BODY[] =
     "document.getElementById('status').className='status offline';"
     "});"
     "}"
-    "setInterval(updateData,2000);"
+    "setInterval(updateData,1000);"
     "updateData();"
     "</script>"
     "</head><body>"
