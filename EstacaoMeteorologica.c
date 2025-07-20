@@ -109,7 +109,7 @@ static const bool padrao_critico[NUM_PIXELS] = {
     1,0,0,0,1
 };
 
-// HTML responsivo com gráficos melhorados
+// Página HTML
 const char HTML_BODY[] =
     "<html><head><meta charset='UTF-8' name='viewport' content='width=device-width,initial-scale=1'><title>Estacao Meteorologica</title>"
     "<style>"
@@ -133,7 +133,8 @@ const char HTML_BODY[] =
     ".footer{text-align:center;margin-top:20px;font-size:12px;color:#7f8c8d;}"
     "@media (max-width:480px){"
     ".row{flex-direction:column;align-items:flex-start;}"
-    ".chart{width:100%;margin:8px 0 0 0;}"
+    ".chart{width:100%;min-width:120px;min-height:20px;height:20px;margin:8px 0 0 0;flex-basis:100%;}" /* Adicionado flex-basis */
+    ".bar{min-height:20px;height:100%;}"
     ".value{text-align:left;margin:4px 0;}"
     "}"
     "</style>"
@@ -144,7 +145,7 @@ const char HTML_BODY[] =
     "document.getElementById('humid-val').textContent=d.h.toFixed(1)+'%';"
     "document.getElementById('press-val').textContent=d.p.toFixed(1)+' kPa';"
     "document.getElementById('alt-val').textContent=d.a.toFixed(0)+' m';"
-    "var tempPct=Math.min(Math.max(((d.t+40)/125)*100,0),100);" // Corrigido para -40 a +85
+    "var tempPct=Math.min(Math.max(((d.t+40)/125)*100,0),100);"
     "var humidPct=Math.min(Math.max(d.h,0),100);"
     "var pressPct=Math.min(Math.max((d.p-95)*10,0),100);"
     "var altPct=Math.min(Math.max(d.a/20,0),100);"
@@ -283,7 +284,7 @@ NivelStatus avaliar_pressao(float pressao) {
 
 // Estrutura para HTTP
 struct http_state {
-    char response[4096];
+    char response[8192]; // AUMENTADO de 4096 para 8192
     size_t len;
     size_t sent;
 };
