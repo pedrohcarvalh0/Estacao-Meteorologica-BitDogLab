@@ -29,9 +29,9 @@
 #define BOTAO_B 6
 #define BUZZER_PIN 10
 #define WS2812_PIN 7
-#define LED_RGB_R 13
-#define LED_RGB_B 12
-#define LED_RGB_G 11
+#define LED_RGB_R 18
+#define LED_RGB_G 19
+#define LED_RGB_B 20
 
 #define NUM_PIXELS 25
 #define SEA_LEVEL_PRESSURE 101325.0
@@ -108,6 +108,99 @@ static const bool padrao_critico[NUM_PIXELS] = {
     0,1,0,1,0,
     1,0,0,0,1
 };
+
+// HTML responsivo com gráficos melhorados
+const char HTML_BODY[] =
+    "<html><head><meta charset='UTF-8' name='viewport' content='width=device-width,initial-scale=1'><title>Estacao Meteorologica</title>"
+    "<style>"
+    "body{font-family:Arial,sans-serif;margin:10px;background:#f8f9fa;color:#333;}"
+    "h2{text-align:center;color:#2c3e50;margin:15px 0;}"
+    ".container{max-width:600px;margin:0 auto;}"
+    ".card{background:#fff;margin:8px 0;padding:12px;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);}"
+    ".row{display:flex;align-items:center;margin:8px 0;}"
+    ".label{font-weight:bold;min-width:60px;color:#34495e;}"
+    ".value{font-size:18px;font-weight:bold;min-width:80px;text-align:right;}"
+    ".chart{flex:1;margin-left:15px;height:20px;background:#ecf0f1;border-radius:10px;overflow:hidden;position:relative;}"
+    ".bar{height:100%;border-radius:10px;transition:width 0.5s ease;position:relative;}"
+    ".bar::after{content:attr(data-value);position:absolute;right:5px;top:50%;transform:translateY(-50%);font-size:10px;color:#fff;text-shadow:1px 1px 1px rgba(0,0,0,0.5);}"
+    ".temp{background:linear-gradient(90deg,#27ae60,#f39c12,#e74c3c);}"
+    ".humid{background:linear-gradient(90deg,#3498db,#2ecc71);}"
+    ".press{background:linear-gradient(90deg,#9b59b6,#3498db);}"
+    ".alt{background:linear-gradient(90deg,#8b4513,#27ae60);}"
+    ".status{padding:4px 12px;border-radius:12px;color:#fff;font-size:12px;font-weight:bold;}"
+    ".online{background:#27ae60;}"
+    ".offline{background:#e74c3c;}"
+    ".footer{text-align:center;margin-top:20px;font-size:12px;color:#7f8c8d;}"
+    "@media (max-width:480px){"
+    ".row{flex-direction:column;align-items:flex-start;}"
+    ".chart{width:100%;margin:8px 0 0 0;}"
+    ".value{text-align:left;margin:4px 0;}"
+    "}"
+    "</style>"
+    "<script>"
+    "function updateData(){"
+    "fetch('/d').then(r=>r.json()).then(d=>{"
+    "document.getElementById('temp-val').textContent=d.t.toFixed(1)+'°C';"
+    "document.getElementById('humid-val').textContent=d.h.toFixed(1)+'%';"
+    "document.getElementById('press-val').textContent=d.p.toFixed(1)+' kPa';"
+    "document.getElementById('alt-val').textContent=d.a.toFixed(0)+' m';"
+    "var tempPct=Math.min(Math.max(d.t*2.5,0),100);"
+    "var humidPct=Math.min(Math.max(d.h,0),100);"
+    "var pressPct=Math.min(Math.max((d.p-95)*10,0),100);"
+    "var altPct=Math.min(Math.max(d.a/20,0),100);"
+    "document.getElementById('temp-bar').style.width=tempPct+'%';"
+    "document.getElementById('humid-bar').style.width=humidPct+'%';"
+    "document.getElementById('press-bar').style.width=pressPct+'%';"
+    "document.getElementById('alt-bar').style.width=altPct+'%';"
+    "document.getElementById('temp-bar').setAttribute('data-value',tempPct.toFixed(0)+'%');"
+    "document.getElementById('humid-bar').setAttribute('data-value',humidPct.toFixed(0)+'%');"
+    "document.getElementById('press-bar').setAttribute('data-value',pressPct.toFixed(0)+'%');"
+    "document.getElementById('alt-bar').setAttribute('data-value',altPct.toFixed(0)+'%');"
+    "}).catch(e=>{"
+    "console.log('Erro:',e);"
+    "document.getElementById('status').textContent='Offline';"
+    "document.getElementById('status').className='status offline';"
+    "});"
+    "}"
+    "setInterval(updateData,2000);"
+    "updateData();"
+    "</script>"
+    "</head><body>"
+    "<div class='container'>"
+    "<h2>🌤️ Estação Meteorológica</h2>"
+    "<div class='card'>"
+    "<div style='text-align:center;margin-bottom:10px;'>"
+    "<span id='status' class='status online'>Online</span>"
+    "</div>"
+    "</div>"
+    "<div class='card'>"
+    "<div class='row'>"
+    "<span class='label'>🌡️ Temp:</span>"
+    "<span class='value' id='temp-val'>--°C</span>"
+    "<div class='chart'><div id='temp-bar' class='bar temp' data-value='0%'></div></div>"
+    "</div>"
+    "<div class='row'>"
+    "<span class='label'>💧 Umid:</span>"
+    "<span class='value' id='humid-val'>--%</span>"
+    "<div class='chart'><div id='humid-bar' class='bar humid' data-value='0%'></div></div>"
+    "</div>"
+    "<div class='row'>"
+    "<span class='label'>🌪️ Pres:</span>"
+    "<span class='value' id='press-val'>-- kPa</span>"
+    "<div class='chart'><div id='press-bar' class='bar press' data-value='0%'></div></div>"
+    "</div>"
+    "<div class='row'>"
+    "<span class='label'>⛰️ Alt:</span>"
+    "<span class='value' id='alt-val'>-- m</span>"
+    "<div class='chart'><div id='alt-bar' class='bar alt' data-value='0%'></div></div>"
+    "</div>"
+    "</div>"
+    "<div class='footer'>"
+    "<p>BitDogLab - CEPEDI TIC37 EMBARCATECH</p>"
+    "<p>Atualização automática a cada 2 segundos</p>"
+    "</div>"
+    "</div>"
+    "</body></html>";
 
 // Protótipos de funções
 void init_hardware(void);
@@ -190,49 +283,9 @@ NivelStatus avaliar_pressao(float pressao) {
     return NIVEL_BOM;
 }
 
-// HTML da interface web - Versão simplificada e leve
-const char HTML_BODY[] =
-    "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Estacao Meteorologica</title>"
-    "<style>"
-    "body{font-family:Arial;margin:20px;background:#f0f0f0;}"
-    "h1{color:#333;text-align:center;}"
-    "table{width:100%;border-collapse:collapse;background:white;}"
-    "th,td{border:1px solid #ddd;padding:10px;text-align:left;}"
-    "th{background:#4CAF50;color:white;}"
-    ".valor{font-size:24px;font-weight:bold;}"
-    ".status{padding:5px 10px;border-radius:5px;color:white;}"
-    ".ok{background:#4CAF50;}"
-    ".erro{background:#f44336;}"
-    "</style>"
-    "<script>"
-    "function atualizar(){"
-    "fetch('/dados').then(r=>r.json()).then(d=>{"
-    "document.getElementById('temp').innerHTML=d.temp_aht.toFixed(1)+'°C';"
-    "document.getElementById('umid').innerHTML=d.umidade.toFixed(1)+'%';"
-    "document.getElementById('pres').innerHTML=d.pressao.toFixed(1)+' kPa';"
-    "document.getElementById('alt').innerHTML=d.altitude.toFixed(0)+' m';"
-    "document.getElementById('wifi').innerHTML=d.wifi?'Conectado':'Desconectado';"
-    "document.getElementById('wifi').className='status '+(d.wifi?'ok':'erro');"
-    "}).catch(e=>console.log(e));"
-    "}"
-    "setInterval(atualizar,3000);"
-    "atualizar();"
-    "</script></head><body>"
-    "<h1>Estacao Meteorologica</h1>"
-    "<p>Status WiFi: <span id='wifi' class='status ok'>Conectado</span></p>"
-    "<table>"
-    "<tr><th>Parametro</th><th>Valor</th></tr>"
-    "<tr><td>Temperatura</td><td class='valor' id='temp'>--</td></tr>"
-    "<tr><td>Umidade</td><td class='valor' id='umid'>--</td></tr>"
-    "<tr><td>Pressao</td><td class='valor' id='pres'>--</td></tr>"
-    "<tr><td>Altitude</td><td class='valor' id='alt'>--</td></tr>"
-    "</table>"
-    "<p><small>Atualizacao a cada 3 segundos</small></p>"
-    "</body></html>";
-
 // Estrutura para HTTP
 struct http_state {
-    char response[8192];
+    char response[4096];
     size_t len;
     size_t sent;
 };
@@ -262,33 +315,22 @@ static err_t http_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t er
     }
     hs->sent = 0;
 
-    if (strstr(req, "GET /dados")) {
-        char json_payload[512];
-        int json_len = snprintf(json_payload, sizeof(json_payload),
-                               "{\"temp_aht\":%.2f,\"temp_bmp\":%.2f,\"umidade\":%.2f,\"pressao\":%.2f,\"altitude\":%.2f,\"wifi\":%s}",
+    // JSON ultra compacto
+    if (strstr(req, "GET /d")) {
+        char json[128];
+        int json_len = snprintf(json, sizeof(json),
+                               "{\"t\":%.1f,\"h\":%.1f,\"p\":%.1f,\"a\":%.0f}",
                                dados_sensores.temperatura_aht,
-                               dados_sensores.temperatura_bmp,
                                dados_sensores.umidade,
                                dados_sensores.pressao / 1000.0,
-                               dados_sensores.altitude,
-                               dados_sensores.wifi_conectado ? "true" : "false");
+                               dados_sensores.altitude);
 
         hs->len = snprintf(hs->response, sizeof(hs->response),
-                          "HTTP/1.1 200 OK\r\n"
-                          "Content-Type: application/json\r\n"
-                          "Content-Length: %d\r\n"
-                          "Connection: close\r\n"
-                          "\r\n"
-                          "%s",
-                          json_len, json_payload);
+                          "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s",
+                          json_len, json);
     } else {
         hs->len = snprintf(hs->response, sizeof(hs->response),
-                          "HTTP/1.1 200 OK\r\n"
-                          "Content-Type: text/html\r\n"
-                          "Content-Length: %d\r\n"
-                          "Connection: close\r\n"
-                          "\r\n"
-                          "%s",
+                          "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s",
                           (int)strlen(HTML_BODY), HTML_BODY);
     }
 
