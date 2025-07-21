@@ -81,8 +81,15 @@ volatile bool botao_b_pressionado = false;
 volatile uint32_t ultimo_debounce_a = 0;
 volatile uint32_t ultimo_debounce_b = 0;
 
+// Variáveis de offset de calibração
+float offset_temp = 0.0;
+float offset_humid = 0.0;
+float offset_press = 0.0;
+float offset_alt = 0.0;
+
+
 // Nomes dos status para exibição no display
-const char* nomes_status[] = {"Temp", "Umid", "Pres", "Alt"};
+const char* nomes_status[] = {"Temperatura", "Umidade", "Pressao", "Altitude"};
 
 // Padrões para matriz de LEDs
 static const bool padrao_bom[NUM_PIXELS] = {
@@ -95,10 +102,10 @@ static const bool padrao_bom[NUM_PIXELS] = {
 
 static const bool padrao_alerta[NUM_PIXELS] = {
     0,0,1,0,0,
-    0,1,1,1,0,
-    0,1,1,1,0,
     0,0,1,0,0,
-    0,1,1,1,0
+    0,1,1,1,0,
+    1,1,1,1,1,
+    0,0,0,0,0
 };
 
 static const bool padrao_critico[NUM_PIXELS] = {
@@ -131,11 +138,19 @@ const char HTML_BODY[] =
     ".online{background:#27ae60;}"
     ".offline{background:#e74c3c;}"
     ".footer{text-align:center;margin-top:20px;font-size:12px;color:#7f8c8d;}"
+    ".setting-group{border:1px solid #eee;padding:10px;border-radius:5px;margin-bottom:10px;}"
+    ".setting-group h4{margin-top:0;margin-bottom:8px;color:#2c3e50;}"
+    ".setting-group input{width:80px;padding:5px;margin:0 5px;border:1px solid #ccc;border-radius:4px;}"
+    ".setting-group .label{min-width:unset;font-weight:normal;}"
+    ".setting-group button{background:#3498db;color:#fff;border:none;padding:8px 15px;border-radius:5px;cursor:pointer;width:100%;margin-top:10px;}"
+    ".setting-group button:active{background:#2980b9;}"
     "@media (max-width:480px){"
     ".row{flex-direction:column;align-items:flex-start;}"
-    ".chart{width:100%;min-width:120px;min-height:20px;height:20px;margin:8px 0 0 0;flex-basis:100%;}" /* Adicionado flex-basis */
+    ".chart{width:100%;min-width:120px;min-height:20px;height:20px;margin:8px 0 0 0;flex-basis:100%;}"
     ".bar{min-height:20px;height:100%;}"
     ".value{text-align:left;margin:4px 0;}"
+    ".setting-group input{width:calc(100% - 10px);margin-bottom:5px;}"
+    ".setting-group .row{flex-direction:row;justify-content:space-between;}"
     "}"
     "</style>"
     "<script>"
@@ -161,6 +176,23 @@ const char HTML_BODY[] =
     "console.log('Erro:',e);"
     "document.getElementById('status').textContent='Offline';"
     "document.getElementById('status').className='status offline';"
+    "});"
+    "}"
+    "function saveSettings(){"
+    "var tOff = document.getElementById('temp-offset').value;"
+    "var hOff = document.getElementById('humid-offset').value;"
+    "var pOff = document.getElementById('press-offset').value;"
+    "var aOff = document.getElementById('alt-offset').value;"
+    "var url = '/set_config?toff='+tOff+"
+    "'&hoff='+hOff+"
+    "'&poff='+pOff+"
+    "'&aoff='+aOff;"
+    "fetch(url).then(r=>r.text()).then(d=>{"
+    "document.getElementById('settings-status').textContent='Configurações salvas!';"
+    "setTimeout(()=>document.getElementById('settings-status').textContent='',3000);"
+    "}).catch(e=>{"
+    "console.log('Erro ao salvar:',e);"
+    "document.getElementById('settings-status').textContent='Erro ao salvar!';"
     "});"
     "}"
     "setInterval(updateData,1000);"
@@ -195,6 +227,36 @@ const char HTML_BODY[] =
     "<span class='value' id='alt-val'>-- m</span>"
     "<div class='chart'><div id='alt-bar' class='bar alt' data-value='0%'></div></div>"
     "</div>"
+    "</div>"
+    // Seção de Configurações
+    "<div class='card'>"
+    "<h3>⚙️ Calibração de Offset</h3>"
+    "<div class='setting-group'>"
+    "<h4>Temperatura (°C)</h4>"
+    "<div class='row'>"
+    "<span class='label'>Offset:</span><input type='number' id='temp-offset' value='0.0' step='0.1'>"
+    "</div>"
+    "</div>"
+    "<div class='setting-group'>"
+    "<h4>Umidade (%)</h4>"
+    "<div class='row'>"
+    "<span class='label'>Offset:</span><input type='number' id='humid-offset' value='0.0' step='0.1'>"
+    "</div>"
+    "</div>"
+    "<div class='setting-group'>"
+    "<h4>Pressão (Pa)</h4>" // Mudado para Pa para consistência com o sensor
+    "<div class='row'>"
+    "<span class='label'>Offset:</span><input type='number' id='press-offset' value='0.0' step='0.1'>"
+    "</div>"
+    "</div>"
+    "<div class='setting-group'>"
+    "<h4>Altitude (m)</h4>"
+    "<div class='row'>"
+    "<span class='label'>Offset:</span><input type='number' id='alt-offset' value='0.0' step='0.1'>"
+    "</div>"
+    "</div>"
+    "<button onclick='saveSettings()'>Salvar Offsets</button>"
+    "<p id='settings-status' style='text-align:center;font-size:12px;margin-top:10px;'></p>"
     "</div>"
     "<div class='footer'>"
     "</div>"
@@ -284,7 +346,7 @@ NivelStatus avaliar_pressao(float pressao) {
 
 // Estrutura para HTTP
 struct http_state {
-    char response[8192]; // AUMENTADO de 4096 para 8192
+    char response[8192];
     size_t len;
     size_t sent;
 };
@@ -327,7 +389,20 @@ static err_t http_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t er
         hs->len = snprintf(hs->response, sizeof(hs->response),
                           "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s",
                           json_len, json);
-    } else {
+    } else if (strstr(req, "GET /set_config")) {
+        // Parsear e aplicar apenas offsets
+        char *ptr = strstr(req, "/set_config?");
+        if (ptr) {
+            ptr += strlen("/set_config?");
+            sscanf(ptr, "toff=%f&hoff=%f&poff=%f&aoff=%f",
+                   &offset_temp, &offset_humid, &offset_press, &offset_alt);
+            printf("Offsets recebidos: Temp:%.1f Umid:%.1f Pres:%.1f Alt:%.1f\n", offset_temp, offset_humid, offset_press, offset_alt);
+        }
+
+        hs->len = snprintf(hs->response, sizeof(hs->response),
+                          "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\nOK");
+    }
+    else {
         hs->len = snprintf(hs->response, sizeof(hs->response),
                           "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s",
                           (int)strlen(HTML_BODY), HTML_BODY);
@@ -471,16 +546,16 @@ void ler_sensores(void) {
     int32_t pressure = bmp280_convert_pressure(raw_pressure, raw_temp_bmp, &params);
     
     float temp_bmp = temperature / 100.0;
-    dados_sensores.pressao = pressure;
-    dados_sensores.altitude = 44330.0 * (1.0 - pow(pressure / SEA_LEVEL_PRESSURE, 0.1903));
+    dados_sensores.pressao = pressure + offset_press; // Aplicar offset de pressão
+    dados_sensores.altitude = 44330.0 * (1.0 - pow(dados_sensores.pressao / SEA_LEVEL_PRESSURE, 0.1903)) + offset_alt; // Aplicar offset de altitude
     
     // Ler AHT20
     AHT20_Data data;
     if (aht20_read(I2C_PORT, &data)) {
-        // Calcular média das temperaturas
-        dados_sensores.temperatura_aht = (data.temperature + temp_bmp) / 2.0;
+        // Calcular média das temperaturas e aplicar offset
+        dados_sensores.temperatura_aht = ((data.temperature + temp_bmp) / 2.0) + offset_temp;
         dados_sensores.temperatura_bmp = temp_bmp; // Manter para referência
-        dados_sensores.umidade = data.humidity;
+        dados_sensores.umidade = data.humidity + offset_humid; // Aplicar offset de umidade
     }
 }
 
@@ -501,16 +576,16 @@ void atualizar_display(void) {
         ssd1306_draw_string(&ssd, header, 4, 5);
         ssd1306_line(&ssd, 2, 15, 126, 15, true);
         
-        ssd1306_draw_string(&ssd, "Temp:", 4, 20);
+        ssd1306_draw_string(&ssd, "Temp: ", 4, 20);
         ssd1306_draw_string(&ssd, str_temp, 45, 20);
         
-        ssd1306_draw_string(&ssd, "Umid:", 4, 30);
+        ssd1306_draw_string(&ssd, "Umid: ", 4, 30);
         ssd1306_draw_string(&ssd, str_umid, 45, 30);
         
-        ssd1306_draw_string(&ssd, "Pres:", 4, 40);
+        ssd1306_draw_string(&ssd, "Pres: ", 4, 40);
         ssd1306_draw_string(&ssd, str_press, 45, 40);
         
-        ssd1306_draw_string(&ssd, "Alt:", 4, 50);
+        ssd1306_draw_string(&ssd, "Alt: ", 4, 50);
         ssd1306_draw_string(&ssd, str_alt, 35, 50);
         
     } else { // TELA_WIFI
@@ -548,6 +623,7 @@ void atualizar_matriz_leds(void) {
             nivel = avaliar_pressao(dados_sensores.pressao);
             break;
         case STATUS_ALTITUDE:
+            // Usando limites fixos para altitude também
             nivel = (dados_sensores.altitude > 1000) ? NIVEL_CRITICO : 
                    (dados_sensores.altitude > 500) ? NIVEL_ALERTA : NIVEL_BOM;
             break;
@@ -590,6 +666,7 @@ void verificar_alertas(void) {
     // Verificar apenas a cada 5 segundos
     if ((agora - ultimo_alerta) < 5000) return;
     
+    // Usando limites fixos para alertas
     bool alerta_temperatura = (dados_sensores.temperatura_aht < 10 || dados_sensores.temperatura_aht > 35);
     bool alerta_umidade = (dados_sensores.umidade < 30 || dados_sensores.umidade > 80);
     
