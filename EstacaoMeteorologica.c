@@ -37,8 +37,8 @@
 #define SEA_LEVEL_PRESSURE 101325.0
 
 // Configurações Wi-Fi
-#define WIFI_SSID "KASATECH CARVALHO"
-#define WIFI_PASS "Ph01felix!"
+#define WIFI_SSID "SEU_SSID_AQUI"
+#define WIFI_PASS "UA_SENHA_AQUI"
 
 // Estruturas globais
 typedef struct {
